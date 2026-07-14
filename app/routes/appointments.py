@@ -7,7 +7,6 @@ from ..services import booking
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-
 @router.post("", response_model=schemas.AppointmentOut, status_code=201)
 def create_appointment(
     payload: schemas.AppointmentCreate,
@@ -49,5 +48,21 @@ def cancel_appointment(
             status_code=e.status_code,
             detail=e.message,
         )
+
+    return appointment 
+@router.patch("/{appointment_id}/reschedule", response_model=schemas.AppointmentOut)
+def reschedule_appointment(
+    appointment_id: int,
+    payload: schemas.RescheduleRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        appointment = booking.reschedule_appointment(
+            db=db,
+            appointment_id=appointment_id,
+            new_slot_time=payload.new_slot_time,
+        )
+    except booking.BookingError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
     return appointment

@@ -106,3 +106,38 @@ def cancel_appointment(
     db.commit()
     db.refresh(appointment)
     return appointment
+def reschedule_appointment(
+    db: Session,
+    appointment_id: int,
+    new_slot_time: datetime,
+) -> models.Appointment:
+    appointment = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.id == appointment_id)
+        .first()
+    )
+    if appointment is None:
+        raise BookingError("Appointment not found.", 404)
+
+    if appointment.cancelled:
+        raise BookingError("Cancelled appointments cannot be rescheduled.", 409)
+
+    doctor = (
+        db.query(models.Doctor)
+        .filter(models.Doctor.id == appointment.doctor_id)
+        .first()
+    )
+    if doctor is None:
+        raise BookingError("Doctor not found.", 404)
+
+    _validate_slot(db, doctor, new_slot_time)
+
+    appointment.slot_time = new_slot_time
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise BookingError("This slot is already booked.", 409)
+
+    db.refresh(appointment)
+    return appointment
