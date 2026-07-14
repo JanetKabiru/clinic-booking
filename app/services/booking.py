@@ -86,3 +86,23 @@ def get_available_slots(
         current += timedelta(minutes=SLOT_MINUTES)
 
     return slots
+def cancel_appointment(
+    db: Session, appointment_id: int, reason: str
+) -> models.Appointment:
+    appointment = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.id == appointment_id)
+        .first()
+    )
+
+    if appointment is None:
+        raise BookingError("Appointment not found.", 404)
+
+    if appointment.cancelled:
+        raise BookingError("Appointment is already cancelled.", 409)
+
+    appointment.cancelled = True
+    appointment.cancellation_reason = reason
+    db.commit()
+    db.refresh(appointment)
+    return appointment
