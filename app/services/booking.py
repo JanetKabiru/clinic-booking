@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date as date_type, datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -18,6 +18,9 @@ SLOT_MINUTES = 30
 
 
 def _validate_slot(db: Session, doctor: models.Doctor, slot_time: datetime) -> None:
+    if slot_time.tzinfo is None:
+        slot_time = slot_time.replace(tzinfo=timezone.utc)
+
     now = datetime.now(timezone.utc)
 
     if slot_time <= now:
@@ -56,19 +59,30 @@ def book_appointment(
 
     db.refresh(appointment)
     return appointment
-def _validate_slot(db: Session, doctor: models.Doctor, slot_time: datetime) -> None:
-    if slot_time.tzinfo is None:
-        slot_time = slot_time.replace(tzinfo=timezone.utc)
 
-    now = datetime.now(timezone.utc)
 
-    if slot_time <= now:
-        raise BookingError("Cannot book a slot in the past.", 400)
+def get_available_slots(
+    db: Session, doctor: models.Doctor, target_date: date_type
+) -> list[datetime]:
+    day_start = datetime.combine(target_date, doctor.work_start, tzinfo=timezone.utc)
+    day_end = datetime.combine(target_date, doctor.work_end, tzinfo=timezone.utc)
 
-    slot_local_time = slot_time.time()
-    if not (doctor.work_start <= slot_local_time < doctor.work_end):
-        raise BookingError("Slot is outside the doctor's working hours.", 400)
+    booked = db.query(models.Appointment.slot_time).filter(
+        models.Appointment.doctor_id == doctor.id,
+        models.Appointment.cancelled == False,
+        models.Appointment.slot_time >= day_start,
+        models.Appointment.slot_time < day_end,
+    ).all()
+    booked_times = {
+        row[0].replace(tzinfo=timezone.utc) if row[0].tzinfo is None else row[0]
+        for row in booked
+    }
 
-    minutes_since_midnight = slot_time.hour * 60 + slot_time.minute
-    if minutes_since_midnight % SLOT_MINUTES != 0:
-        raise BookingError("Slot must align to a 30-minute boundary.", 400)
+    slots = []
+    current = day_start
+    while current < day_end:
+        if current not in booked_times:
+            slots.append(current)
+        current += timedelta(minutes=SLOT_MINUTES)
+
+    return slots

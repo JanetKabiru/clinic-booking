@@ -26,3 +26,6 @@ class CancelRequest(BaseModel):
 
 class RescheduleRequest(BaseModel):
     new_slot_time: datetime
+    
+class AvailableSlot(BaseModel):
+    slot_time: datetime
