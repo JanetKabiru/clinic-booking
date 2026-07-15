@@ -1,10 +1,25 @@
+from datetime import time
+
 from fastapi import FastAPI
-from .database import Base, engine
+from .database import Base, engine, SessionLocal
 from . import models
 from .routes.appointments import router as appointments_router
 from .routes.doctors import router as doctors_router
 
 Base.metadata.create_all(bind=engine)
+
+# Seed a default doctor for demo purposes, if none exists
+db = SessionLocal()
+if db.query(models.Doctor).count() == 0:
+    demo_doctor = models.Doctor(
+        name="Dr. Jane Otieno",
+        email="jane.otieno@example.com",
+        work_start=time(9, 0),
+        work_end=time(17, 0),
+    )
+    db.add(demo_doctor)
+    db.commit()
+db.close()
 
 app = FastAPI(
     title="Clinic Booking API",
