@@ -5,6 +5,7 @@ from .database import Base, engine, SessionLocal
 from . import models
 from .routes.appointments import router as appointments_router
 from .routes.doctors import router as doctors_router
+from .routes.patients import router as patients_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -29,7 +30,7 @@ app = FastAPI(
 
 app.include_router(appointments_router)
 app.include_router(doctors_router)
-
+app.include_router(patients_router)
 
 @app.get("/")
 def root():

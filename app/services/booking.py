@@ -23,8 +23,8 @@ def _validate_slot(db: Session, doctor: models.Doctor, slot_time: datetime) -> N
 
     now = datetime.now(timezone.utc)
 
-    if slot_time <= now:
-        raise BookingError("Cannot book a slot in the past.", 400)
+    if slot_time <= now + timedelta(hours=1):
+        raise BookingError("Bookings must be made at least 1 hour in advance.", 400)
 
     slot_local_time = slot_time.time()
     if not (doctor.work_start <= slot_local_time < doctor.work_end):

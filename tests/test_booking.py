@@ -160,3 +160,11 @@ def test_availability_excludes_booked_slot():
     assert response.status_code == 200
     slot_times = [s["slot_time"] for s in response.json()]
     assert not any(t.startswith(slot[:16]) for t in slot_times)
+
+def test_book_within_one_hour_returns_400():
+    near_future = (datetime.now() + timedelta(minutes=30)).isoformat()
+    response = client.post(
+        "/appointments",
+        json={"doctor_id": 1, "patient_id": 1, "slot_time": near_future},
+    )
+    assert response.status_code == 400
